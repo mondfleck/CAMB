@@ -42,6 +42,14 @@ class Recfast(RecombinationModel):
     _fortran_class_name_ = "TRecfast"
 
 
+class XeFile(RecombinationModel):
+    """
+    Dummy recombination model, reads Xe file.
+
+    """
+
+
+
 @optional_fortran_class
 class CosmoRec(RecombinationModel):
     """
