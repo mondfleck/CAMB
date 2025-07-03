@@ -496,6 +496,10 @@
 
     end function TRecfast_version
 
+    ! Params:
+    !   - this: TRecfast
+    !   - State: TCAMBdata
+    !       - contains
     subroutine TRecfast_init(this,State, WantTSpin)
     use MiscUtils
     implicit none
@@ -514,6 +518,14 @@
     integer :: ind, nw
     real(dl), parameter :: tol=1.D-5                !Tolerance for R-K
     procedure(TClassDverk) :: dverk
+
+    ! get file
+    ! read file
+    ! return modify Calc/ this%Calc
+
+    ! modifies:
+    ! this%Calc
+
 
 
     if (.not. allocated(this%Calc)) allocate(this%Calc)
@@ -566,6 +578,9 @@
 
         !       Fudge factor to approximate for low z out of equilibrium effect
         Calc%fu=this%RECFAST_fudge
+
+        ! start here
+
 
         !       Set initial matter temperature
         y(3) = Calc%Tnow*(1._dl+z)            !Initial rad. & mat. temperature
@@ -1074,5 +1089,68 @@
     P => PType
 
     end subroutine TRecfast_SelfPointer
+
+    subroutine TRecfast_readXeFile(filename, z, xe, tmat)
+        implicit none
+        character(len=*), intent(in) :: filename
+        real(dl), allocatable, intent(out) :: z(:), xe(:), tmat(:)
+
+        integer :: i, n, unit, ios
+        character(len=200) :: line
+        real(dl), allocatable :: col1(:), col2(:), col5(:)
+        real(dl) :: dummy1, dummy2
+
+        ! First pass: count number of data lines
+        n = 0
+        open(newunit=unit, file=filename, status='old', action='read')
+        do
+            read(unit, '(A)', iostat=ios) line
+            if (ios /= 0) exit
+            if (line(1:1) /= '#') n = n + 1
+        end do
+        close(unit)
+
+        ! Allocate arrays
+        allocate(z(n), xe(n), tmat(n))
+
+        ! Second pass: read actual data
+        open(newunit=unit, file=filename, status='old', action='read')
+        i = 0
+        do
+            read(unit, '(A)', iostat=ios) line
+            if (ios /= 0) exit
+            if (line(1:1) == '#') cycle
+            i = i + 1
+            read(line, *) z(i), xe(i), dummy1, dummy2, tmat(i)
+        end do
+        close(unit)
+    end subroutine TRecfast_readXeFile
+
+    subroutine TRecfast_linterp(x, xp, fp, f)
+        implicit none
+        real(dl), intent(in)  :: x(:), xp(:), fp(:)
+        real(dl), intent(out) :: f(:)
+
+        integer :: i, j
+        real(dl) :: x0, x1, y0, y1, t
+
+        do i = 1, size(x)
+            if (x(i) <= xp(1)) then
+                f(i) = fp(1)
+            else if (x(i) >= xp(size(xp))) then
+                f(i) = fp(size(fp))
+            else
+                do j = 1, size(xp) - 1
+                    if (x(i) >= xp(j) .and. x(i) < xp(j+1)) then
+                        x0 = xp(j);   x1 = xp(j+1)
+                        y0 = fp(j);   y1 = fp(j+1)
+                        t  = (x(i) - x0) / (x1 - x0)
+                        f(i) = y0 + t * (y1 - y0)
+                        exit
+                    end if
+                end do
+            end if
+        end do
+    end subroutine TRecfast_linterp
 
     end module Recombination
