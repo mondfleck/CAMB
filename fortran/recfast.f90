@@ -518,6 +518,14 @@
     integer :: ind, nw
     real(dl), parameter :: tol=1.D-5                !Tolerance for R-K
     procedure(TClassDverk) :: dverk
+    real(dl), dimension(:), allocatable :: z_file, xe_file, xH_file, xHe_file, Tmat_file
+    real(dl), dimension(:), allocatable :: f_tmp
+    ! can modify these to be inputs from CAMB
+    ! =============================
+    logical, parameter :: readFile = .false.
+    character(:), allocatable :: filename
+    filename = "extra.out"
+    ! =============================
 
     ! get file
     ! read file
@@ -526,7 +534,10 @@
     ! modifies:
     ! this%Calc
 
-
+    if (readFile) then
+        call TRecfast_readXeFile(filename, z_file, xe_file, xH_file, xHe_file, Tmat_file)
+        allocate(f_tmp(1))
+    end if
 
     if (.not. allocated(this%Calc)) allocate(this%Calc)
     Calc => this%Calc
@@ -689,6 +700,20 @@
             x_H = y(1)
             x_He = y(2)
             x = x0
+
+            if (readFile) then
+                call TRecfast_linterp([zend], z_file, xe_file, f_tmp)
+                x = f_tmp(1)
+                call TRecfast_linterp([zend], z_file, xH_file, f_tmp)
+                x_H = f_tmp(1)
+                call TRecfast_linterp([zend], z_file, xHe_file, f_tmp)
+                x_He = f_tmp(1)
+                call TRecfast_linterp([zend], z_file, Tmat_file, f_tmp)
+                Tmat = f_tmp(1)
+                y(1) = x_H
+                y(2) = x_He
+                y(3) = Tmat
+            end if
 
             Calc%zrec(i)=zend
             Calc%xrec(i)=x
@@ -1090,40 +1115,40 @@
 
     end subroutine TRecfast_SelfPointer
 
-    subroutine TRecfast_readXeFile(filename, z, xe, tmat)
+    subroutine TRecfast_readXeFile(filename, z, xe, xH, xHe, tmat)
         implicit none
         character(len=*), intent(in) :: filename
-        real(dl), allocatable, intent(out) :: z(:), xe(:), tmat(:)
+        real(dl), allocatable, intent(out) :: z(:), xe(:), xH(:), xHe(:), tmat(:)
 
         integer :: i, n, unit, ios
         character(len=200) :: line
-        real(dl), allocatable :: col1(:), col2(:), col5(:)
-        real(dl) :: dummy1, dummy2
+        integer, parameter :: max_lines = 10000
+        real(dl), allocatable :: tmp1(:), tmp2(:), tmp3(:), tmp4(:), tmp5(:)
 
-        ! First pass: count number of data lines
+        ! Allocate temporary large arrays (later trimmed)
+        allocate(tmp1(max_lines), tmp2(max_lines), tmp3(max_lines), tmp4(max_lines), tmp5(max_lines))
+
         n = 0
         open(newunit=unit, file=filename, status='old', action='read')
         do
             read(unit, '(A)', iostat=ios) line
             if (ios /= 0) exit
-            if (line(1:1) /= '#') n = n + 1
-        end do
-        close(unit)
-
-        ! Allocate arrays
-        allocate(z(n), xe(n), tmat(n))
-
-        ! Second pass: read actual data
-        open(newunit=unit, file=filename, status='old', action='read')
-        i = 0
-        do
-            read(unit, '(A)', iostat=ios) line
-            if (ios /= 0) exit
             if (line(1:1) == '#') cycle
-            i = i + 1
-            read(line, *) z(i), xe(i), dummy1, dummy2, tmat(i)
+            n = n + 1
+            read(line, *) tmp1(n), tmp2(n), tmp3(n), tmp4(n), tmp5(n)
         end do
         close(unit)
+
+        ! Allocate output arrays and assign
+        allocate(z(n), xe(n), xH(n), xHe(n), tmat(n))
+        z    = tmp1(1:n)
+        xe   = tmp2(1:n)
+        xH   = tmp3(1:n)
+        xHe  = tmp4(1:n)
+        tmat = tmp5(1:n)
+
+        ! Clean up temporary arrays
+        deallocate(tmp1, tmp2, tmp3, tmp4, tmp5)
     end subroutine TRecfast_readXeFile
 
     subroutine TRecfast_linterp(x, xp, fp, f)
