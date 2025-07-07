@@ -522,10 +522,12 @@
     real(dl), dimension(:), allocatable :: f_tmp
     ! can modify these to be inputs from CAMB
     ! =============================
-    logical, parameter :: readFile = .false.
+    logical, parameter :: readFile = .true.
     character(:), allocatable :: filename
-    filename = "extra.out"
+    filename = "f3_0.9.out"
     ! =============================
+
+    print *, "init called"
 
     ! get file
     ! read file
@@ -537,7 +539,10 @@
     if (readFile) then
         call TRecfast_readXeFile(filename, z_file, xe_file, xH_file, xHe_file, Tmat_file)
         allocate(f_tmp(1))
+        print *, "Read file.."
     end if
+
+    print *, "Didn't read..."
 
     if (.not. allocated(this%Calc)) allocate(this%Calc)
     Calc => this%Calc
@@ -702,13 +707,13 @@
             x = x0
 
             if (readFile) then
-                call TRecfast_linterp([zend], z_file, xe_file, f_tmp)
+                call TRecfast_linterp_dec([zend], z_file, xe_file, f_tmp)
                 x = f_tmp(1)
-                call TRecfast_linterp([zend], z_file, xH_file, f_tmp)
+                call TRecfast_linterp_dec([zend], z_file, xH_file, f_tmp)
                 x_H = f_tmp(1)
-                call TRecfast_linterp([zend], z_file, xHe_file, f_tmp)
+                call TRecfast_linterp_dec([zend], z_file, xHe_file, f_tmp)
                 x_He = f_tmp(1)
-                call TRecfast_linterp([zend], z_file, Tmat_file, f_tmp)
+                call TRecfast_linterp_dec([zend], z_file, Tmat_file, f_tmp)
                 Tmat = f_tmp(1)
                 y(1) = x_H
                 y(2) = x_He
@@ -1151,7 +1156,8 @@
         deallocate(tmp1, tmp2, tmp3, tmp4, tmp5)
     end subroutine TRecfast_readXeFile
 
-    subroutine TRecfast_linterp(x, xp, fp, f)
+    subroutine TRecfast_linterp_dec(x, xp, fp, f)
+    ! REQUIRES: xp is decreasing
         implicit none
         real(dl), intent(in)  :: x(:), xp(:), fp(:)
         real(dl), intent(out) :: f(:)
@@ -1160,13 +1166,13 @@
         real(dl) :: x0, x1, y0, y1, t
 
         do i = 1, size(x)
-            if (x(i) <= xp(1)) then
+            if (x(i) >= xp(1)) then
                 f(i) = fp(1)
-            else if (x(i) >= xp(size(xp))) then
+            else if (x(i) <= xp(size(xp))) then
                 f(i) = fp(size(fp))
             else
                 do j = 1, size(xp) - 1
-                    if (x(i) >= xp(j) .and. x(i) < xp(j+1)) then
+                    if (x(i) <= xp(j) .and. x(i) > xp(j+1)) then
                         x0 = xp(j);   x1 = xp(j+1)
                         y0 = fp(j);   y1 = fp(j+1)
                         t  = (x(i) - x0) / (x1 - x0)
@@ -1176,6 +1182,6 @@
                 end do
             end if
         end do
-    end subroutine TRecfast_linterp
+    end subroutine TRecfast_linterp_dec
 
     end module Recombination
