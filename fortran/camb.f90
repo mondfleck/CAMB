@@ -536,6 +536,9 @@
         ErrMsg = 'Compile with HyRec to use recombination_model=HyRec'
         return
 #endif
+    else if (RecombinationModel == 'READFILEREC') then
+        deallocate(P%Recomb)
+        allocate(TReadFileRec::P%Recomb)
     else if (RecombinationModel /= 'RECFAST') then
         ErrMsg =  'Unknown recombination_model: '//trim(RecombinationModel)
         return

@@ -1,4 +1,4 @@
-from ctypes import c_bool, c_double, c_int
+from ctypes import c_bool, c_double, c_int, c_char_p
 
 from .baseconfig import F2003Class, fortran_class, optional_fortran_class
 
@@ -40,6 +40,21 @@ class Recfast(RecombinationModel):
 
     _fortran_class_module_ = "Recombination"
     _fortran_class_name_ = "TRecfast"
+
+
+@fortran_class
+class ReadFileRec(RecombinationModel):
+    """
+    RECFAST recombination model (see recfast source for details).
+
+    """
+
+    _fields_ = [
+        ("filename", c_char_p)
+    ]
+
+    _fortran_class_module_ = "ReadFileRec"
+    _fortran_class_name_ = "TReadFileRec"
 
 
 @optional_fortran_class
