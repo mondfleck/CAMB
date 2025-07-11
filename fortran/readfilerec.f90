@@ -204,7 +204,7 @@
 
 
 
-    module Recombination
+    module ReadFileRec
     use constants
     use classes
     use DarkAge21cm
@@ -225,6 +225,8 @@
     real(dl), parameter :: RECFAST_fudge_default = 1.14_dl !1.14_dl
     real(dl), parameter :: RECFAST_fudge_default2 = 1.105d0 + 0.02d0
 
+    character(10), parameter :: FILENAME_default = "xefile.out"
+
     Type RecombinationData
         real(dl) :: Recombination_saha_z !Redshift at which saha OK
         real(dl), private :: NNow, fHe
@@ -240,7 +242,7 @@
         class(CAMBdata), pointer :: State
     end Type RecombinationData
 
-    type, extends(TRecombinationModel) :: TRecfast
+    type, extends(TRecombinationModel) :: TReadFileRec
         real(dl) :: RECFAST_fudge  = RECFAST_fudge_default2
         real(dl) :: RECFAST_fudge_He = RECFAST_fudge_He_default
         integer  :: RECFAST_Heswitch = RECFAST_Heswitch_default
@@ -266,20 +268,21 @@
         real(dl) :: wGauss1=        0.18D0  !Width of 1st Gaussian
         real(dl) :: wGauss2=        0.33D0  !Width of 2nd Gaussian
         Type(RecombinationData), allocatable :: Calc
+        character(:) :: filename = FILENAME_default
     contains
-    procedure :: ReadParams => TRecfast_ReadParams
-    procedure :: Validate => TRecfast_Validate
-    procedure :: Init => TRecfast_init
-    procedure :: x_e => TRecfast_xe
-    procedure :: xe_Tm => TRecfast_xe_Tm !ionization fraction and baryon temperature
-    procedure :: T_m => TRecfast_tm !baryon temperature
-    procedure :: T_s => TRecfast_ts !Spin temperature
-    procedure :: Version => TRecfast_version
-    procedure :: dDeltaxe_dtau => TRecfast_dDeltaxe_dtau
-    procedure :: get_Saha_z => TRecfast_Get_Saha_z
-    procedure, nopass :: SelfPointer => TRecfast_SelfPointer
+    procedure :: ReadParams => TReadFileRec_ReadParams
+    procedure :: Validate => TReadFileRec_Validate
+    procedure :: Init => TReadFileRec_init
+    procedure :: x_e => TReadFileRec_xe
+    procedure :: xe_Tm => TReadFileRec_xe_Tm !ionization fraction and baryon temperature
+    procedure :: T_m => TReadFileRec_tm !baryon temperature
+    procedure :: T_s => TReadFileRec_ts !Spin temperature
+    procedure :: Version => TReadFileRec_version
+    procedure :: dDeltaxe_dtau => TReadFileRec_dDeltaxe_dtau
+    procedure :: get_Saha_z => TReadFileRec_Get_Saha_z
+    procedure, nopass :: SelfPointer => TReadFileRec_SelfPointer
 
-    end type TRecfast
+    end type TReadFileRec
 
     character(LEN=*), parameter :: Recfast_Version = 'Recfast_1.5.2'
 
@@ -338,13 +341,13 @@
 
     procedure(obj_function), private :: dtauda
 
-    public TRecfast,  CB1
+    public TReadFileRec,  CB1
 
     contains
 
-    subroutine TRecfast_ReadParams(this, Ini)
+    subroutine TReadFileRec_ReadParams(this, Ini)
     use IniObjects
-    class(TRecfast) :: this
+    class(TReadFileRec) :: this
     class(TIniFile), intent(in) :: Ini
 
     this%RECFAST_fudge_He = Ini%Read_Double('RECFAST_fudge_He', RECFAST_fudge_He_default)
@@ -360,10 +363,12 @@
     if (this%RECFAST_Hswitch) then
         this%RECFAST_fudge = this%RECFAST_fudge - (RECFAST_fudge_default - RECFAST_fudge_default2)
     end if
-    end subroutine TRecfast_ReadParams
+    ! read filename
+    this%filename = Ini%Read_String_Default('REC_filename', FILENAME_default)
+    end subroutine TReadFileRec_ReadParams
 
-    subroutine TRecfast_Validate(this, OK)
-    class(TRecfast),intent(in) :: this
+    subroutine TReadFileRec_Validate(this, OK)
+    class(TReadFileRec),intent(in) :: this
     logical, intent(inout) :: OK
 
     if (this%RECFAST_Heswitch<0 .or. this%RECFAST_Heswitch > 6) then
@@ -371,51 +376,53 @@
         write(*,*) 'RECFAST_Heswitch unknown'
     end if
 
-    end subroutine TRecfast_Validate
+    ! see if file is there
+
+    end subroutine TReadFileRec_Validate
 
 
-    function TRecfast_tm(this,a)
-    class(TRecfast) :: this
+    function TReadFileRec_tm(this,a)
+    class(TReadFileRec) :: this
     real(dl), intent(in) :: a
-    real(dl) zst,z,az,bz,TRecfast_tm
+    real(dl) zst,z,az,bz,TReadFileRec_tm
     integer ilo,ihi
 
     z=1/a-1
     associate( Calc => this%Calc)
         if (z >= Calc%zrec(1)) then
-            TRecfast_tm=Calc%Tnow/a
+            TReadFileRec_tm=Calc%Tnow/a
         else
             if (z <=Calc%zrec(nz)) then
-                TRecfast_tm=Calc%Tmrec(nz)
+                TReadFileRec_tm=Calc%Tmrec(nz)
             else
                 zst=(zinitial-z)/delta_z
                 ihi= int(zst)
                 ilo = ihi+1
                 az=zst - ihi
                 bz=1-az
-                TRecfast_tm=az*Calc%Tmrec(ilo)+bz*Calc%Tmrec(ihi)+ &
+                TReadFileRec_tm=az*Calc%Tmrec(ilo)+bz*Calc%Tmrec(ihi)+ &
                     ((az**3-az)*Calc%dTmrec(ilo)+(bz**3-bz)*Calc%dTmrec(ihi))/6._dl
             endif
         endif
     end associate
 
-    end function TRecfast_tm
+    end function TReadFileRec_tm
 
 
-    function TRecfast_ts(this,a)
-    class(TRecfast) :: this
+    function TReadFileRec_ts(this,a)
+    class(TReadFileRec) :: this
     !zrec(1) is zinitial-delta_z
     real(dl), intent(in) :: a
-    real(dl) zst,z,az,bz,TRecfast_ts
+    real(dl) zst,z,az,bz,TReadFileRec_ts
     integer ilo,ihi
 
     z=1/a-1
     associate(Calc => this%Calc)
         if (z.ge.Calc%zrec(1)) then
-            TRecfast_ts=Calc%tsrec(1)
+            TReadFileRec_ts=Calc%tsrec(1)
         else
             if (z.le.Calc%zrec(nz)) then
-                TRecfast_ts=Calc%tsrec(nz)
+                TReadFileRec_ts=Calc%tsrec(nz)
             else
                 zst=(zinitial-z)/delta_z
                 ihi= int(zst)
@@ -423,41 +430,41 @@
                 az=zst - ihi
                 bz=1-az
 
-                TRecfast_ts=az*Calc%tsrec(ilo)+bz*Calc%tsrec(ihi)+ &
+                TReadFileRec_ts=az*Calc%tsrec(ilo)+bz*Calc%tsrec(ihi)+ &
                     ((az**3-az)*Calc%dtsrec(ilo)+(bz**3-bz)*Calc%dtsrec(ihi))/6._dl
             endif
         endif
     end associate
-    end function TRecfast_ts
+    end function TReadFileRec_ts
 
-    function TRecfast_xe(this,a)
-    class(TRecfast) :: this
+    function TReadFileRec_xe(this,a)
+    class(TReadFileRec) :: this
     real(dl), intent(in) :: a
-    real(dl) zst,z,az,bz,TRecfast_xe
+    real(dl) zst,z,az,bz,TReadFileRec_xe
     integer ilo,ihi
 
     z=1/a-1
     associate(Calc => this%Calc)
         if (z.ge.Calc%zrec(1)) then
-            TRecfast_xe=Calc%xrec(1)
+            TReadFileRec_xe=Calc%xrec(1)
         else
             if (z.le.Calc%zrec(nz)) then
-                TRecfast_xe=Calc%xrec(nz)
+                TReadFileRec_xe=Calc%xrec(nz)
             else
                 zst=(zinitial-z)/delta_z
                 ihi= int(zst)
                 ilo = ihi+1
                 az=zst - ihi
                 bz=1-az
-                TRecfast_xe=az*Calc%xrec(ilo)+bz*Calc%xrec(ihi)+ &
+                TReadFileRec_xe=az*Calc%xrec(ilo)+bz*Calc%xrec(ihi)+ &
                     ((az**3-az)*Calc%dxrec(ilo)+(bz**3-bz)*Calc%dxrec(ihi))/6._dl
             endif
         endif
     end associate
-    end function TRecfast_xe
+    end function TReadFileRec_xe
 
-    subroutine TRecfast_xe_Tm(this,a, xe, Tm)
-    class(TRecfast) :: this
+    subroutine TReadFileRec_xe_Tm(this,a, xe, Tm)
+    class(TReadFileRec) :: this
     real(dl), intent(in) :: a
     real(dl), intent(out) :: xe, Tm
     real(dl) zst,z,az,bz
@@ -486,20 +493,24 @@
             endif
         endif
     end associate
-    end subroutine TRecfast_xe_Tm
+    end subroutine TReadFileRec_xe_Tm
 
-    function TRecfast_version(this) result(this_version)
-    class(TRecfast) :: this
+    function TReadFileRec_version(this) result(this_version)
+    class(TReadFileRec) :: this
     character(LEN=:), allocatable :: this_version
 
     this_version = Recfast_Version
 
-    end function TRecfast_version
+    end function TReadFileRec_version
 
-    subroutine TRecfast_init(this,State, WantTSpin)
+    ! Params:
+    !   - this: TReadFileRec
+    !   - State: TCAMBdata
+    !       - contains
+    subroutine TReadFileRec_init(this,State, WantTSpin)
     use MiscUtils
     implicit none
-    class(TRecfast), target :: this
+    class(TReadFileRec), target :: this
     class(TCAMBdata), target :: State
     real(dl) :: Trad,Tmat,Tspin
     integer :: I
@@ -514,7 +525,31 @@
     integer :: ind, nw
     real(dl), parameter :: tol=1.D-5                !Tolerance for R-K
     procedure(TClassDverk) :: dverk
+    real(dl), dimension(:), allocatable :: z_file, xe_file, xH_file, xHe_file, Tmat_file
+    real(dl), dimension(:), allocatable :: f_tmp
+    ! can modify these to be inputs from CAMB
+    ! =============================
+    logical, parameter :: readFile = .true.
+    character(:), allocatable :: filename
+    filename = "f3_0.9.out"
+    ! =============================
 
+    print *, "init called"
+
+    ! get file
+    ! read file
+    ! return modify Calc/ this%Calc
+
+    ! modifies:
+    ! this%Calc
+
+    if (readFile) then
+        call TReadFileRec_readXeFile(filename, z_file, xe_file, xH_file, xHe_file, Tmat_file)
+        allocate(f_tmp(1))
+        print *, "Read file.."
+    end if
+
+    print *, "Didn't read..."
 
     if (.not. allocated(this%Calc)) allocate(this%Calc)
     Calc => this%Calc
@@ -566,6 +601,9 @@
 
         !       Fudge factor to approximate for low z out of equilibrium effect
         Calc%fu=this%RECFAST_fudge
+
+        ! start here
+
 
         !       Set initial matter temperature
         y(3) = Calc%Tnow*(1._dl+z)            !Initial rad. & mat. temperature
@@ -675,6 +713,20 @@
             x_He = y(2)
             x = x0
 
+            if (readFile) then
+                call TReadFileRec_linterp_dec([zend], z_file, xe_file, f_tmp)
+                x = f_tmp(1)
+                call TReadFileRec_linterp_dec([zend], z_file, xH_file, f_tmp)
+                x_H = f_tmp(1)
+                call TReadFileRec_linterp_dec([zend], z_file, xHe_file, f_tmp)
+                x_He = f_tmp(1)
+                call TReadFileRec_linterp_dec([zend], z_file, Tmat_file, f_tmp)
+                Tmat = f_tmp(1)
+                y(1) = x_H
+                y(2) = x_He
+                y(3) = Tmat
+            end if
+
             Calc%zrec(i)=zend
             Calc%xrec(i)=x
             Calc%tmrec(i) = Tmat
@@ -710,7 +762,7 @@
         call MpiStop('Wrong state type')
     end select
 
-    end subroutine TRecfast_init
+    end subroutine TReadFileRec_init
 
     !       ===============================================================
     subroutine GET_INIT(Calc,z,x_H0,x_He0,x0)
@@ -760,7 +812,7 @@
     end subroutine GET_INIT
 
     subroutine ION(this,Ndim,z,Y,f)
-    class(TRecfast), target :: this
+    class(TReadFileRec), target :: this
     integer Ndim
 
     real(dl) z,x,n,n_He,Trad,Tmat,Tspin,x_H,x_He, Hz
@@ -991,11 +1043,11 @@
     end subroutine ION
 
 
-    function TRecfast_dDeltaxe_dtau(this,a, Delta_xe,Delta_nH, Delta_Tm, hdot, kvb,adotoa)
+    function TReadFileRec_dDeltaxe_dtau(this,a, Delta_xe,Delta_nH, Delta_Tm, hdot, kvb,adotoa)
     !d x_e/d tau assuming Helium all neutral and temperature perturbations negligible
     !it is not accurate for x_e of order 1
-    class(TRecfast) :: this
-    real(dl) TRecfast_dDeltaxe_dtau
+    class(TReadFileRec) :: this
+    real(dl) TReadFileRec_dDeltaxe_dtau
     real(dl), intent(in):: a, Delta_xe,Delta_nH, Delta_Tm, hdot, kvb,adotoa
     real(dl) Delta_Tg
     real(dl) xedot,z,x,n,n_He,Trad,Tmat,x_H,Hz, C_r, dlnC_r
@@ -1048,7 +1100,7 @@
         dlnC_r = -Rup*K*n*( (Delta_nH+Delta_K + Delta_beta*(1+K*Lambda*n*(1-x_H)))*(1-x_H) - x_H*Delta_xe) &
             / ( 1.d0+K*(Lambda+Rup)*n*(1.d0-x_H) ) /(1.d0 + K*Lambda*n*(1.d0-x_H))
 
-        TRecfast_dDeltaxe_dtau= xedot/x_H*(dlnC_r +Delta_alpha - Delta_xe) &
+        TReadFileRec_dDeltaxe_dtau= xedot/x_H*(dlnC_r +Delta_alpha - Delta_xe) &
             - C_r*( (2*Delta_xe + Delta_nH)*x_H*n*Rdown + (Delta_xe - (3./2+ CB1/Tmat)*(1/x_H-1)*Delta_Tg)*Rup*exp(-CL/Tmat))
     end associate
 
@@ -1056,23 +1108,87 @@
     !        dDeltaxe_dtau= xedot/x_H*(Delta_alpha + Delta_xe + Delta_nH)
 
 
-    end function TRecfast_dDeltaxe_dtau
+    end function TReadFileRec_dDeltaxe_dtau
 
-    real(dl) function TRecfast_Get_Saha_z(this)
-    class(TRecfast) :: this
-    TRecfast_Get_Saha_z =  this%Calc%recombination_saha_z
+    real(dl) function TReadFileRec_Get_Saha_z(this)
+    class(TReadFileRec) :: this
+    TReadFileRec_Get_Saha_z =  this%Calc%recombination_saha_z
     end function
 
 
-    subroutine TRecfast_SelfPointer(cptr,P)
+    subroutine TReadFileRec_SelfPointer(cptr,P)
     use iso_c_binding
     Type(c_ptr) :: cptr
-    Type (TRecfast), pointer :: PType
+    Type (TReadFileRec), pointer :: PType
     class (TPythonInterfacedClass), pointer :: P
 
     call c_f_pointer(cptr, PType)
     P => PType
 
-    end subroutine TRecfast_SelfPointer
+    end subroutine TReadFileRec_SelfPointer
 
-    end module Recombination
+    subroutine TReadFileRec_readXeFile(filename, z, xe, xH, xHe, tmat)
+        implicit none
+        character(len=*), intent(in) :: filename
+        real(dl), allocatable, intent(out) :: z(:), xe(:), xH(:), xHe(:), tmat(:)
+
+        integer :: i, n, unit, ios
+        character(len=200) :: line
+        integer, parameter :: max_lines = 10000
+        real(dl), allocatable :: tmp1(:), tmp2(:), tmp3(:), tmp4(:), tmp5(:)
+
+        ! Allocate temporary large arrays (later trimmed)
+        allocate(tmp1(max_lines), tmp2(max_lines), tmp3(max_lines), tmp4(max_lines), tmp5(max_lines))
+
+        n = 0
+        open(newunit=unit, file=filename, status='old', action='read')
+        do
+            read(unit, '(A)', iostat=ios) line
+            if (ios /= 0) exit
+            if (line(1:1) == '#') cycle
+            n = n + 1
+            read(line, *) tmp1(n), tmp2(n), tmp3(n), tmp4(n), tmp5(n)
+        end do
+        close(unit)
+
+        ! Allocate output arrays and assign
+        allocate(z(n), xe(n), xH(n), xHe(n), tmat(n))
+        z    = tmp1(1:n)
+        xe   = tmp2(1:n)
+        xH   = tmp3(1:n)
+        xHe  = tmp4(1:n)
+        tmat = tmp5(1:n)
+
+        ! Clean up temporary arrays
+        deallocate(tmp1, tmp2, tmp3, tmp4, tmp5)
+    end subroutine TReadFileRec_readXeFile
+
+    subroutine TReadFileRec_linterp_dec(x, xp, fp, f)
+    ! REQUIRES: xp is decreasing
+        implicit none
+        real(dl), intent(in)  :: x(:), xp(:), fp(:)
+        real(dl), intent(out) :: f(:)
+
+        integer :: i, j
+        real(dl) :: x0, x1, y0, y1, t
+
+        do i = 1, size(x)
+            if (x(i) >= xp(1)) then
+                f(i) = fp(1)
+            else if (x(i) <= xp(size(xp))) then
+                f(i) = fp(size(fp))
+            else
+                do j = 1, size(xp) - 1
+                    if (x(i) <= xp(j) .and. x(i) > xp(j+1)) then
+                        x0 = xp(j);   x1 = xp(j+1)
+                        y0 = fp(j);   y1 = fp(j+1)
+                        t  = (x(i) - x0) / (x1 - x0)
+                        f(i) = y0 + t * (y1 - y0)
+                        exit
+                    end if
+                end do
+            end if
+        end do
+    end subroutine TReadFileRec_linterp_dec
+
+    end module ReadFileRec
