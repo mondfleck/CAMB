@@ -60,6 +60,7 @@
     use InitialPower
     use SourceWindows
     use Recombination, only: TRecfast
+    use ReadFileRec, only: TReadFileRec
     use RangeUtils
     use constants
     use DarkEnergyInterface

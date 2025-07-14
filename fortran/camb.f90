@@ -7,6 +7,7 @@
     use InitialPower
     use Reionization
     use Recombination, only : TRecFast
+    use ReadFileRec, only: TReadFileRec
     use lensing
     use DarkEnergyFluid
     implicit none

@@ -268,7 +268,7 @@
         real(dl) :: wGauss1=        0.18D0  !Width of 1st Gaussian
         real(dl) :: wGauss2=        0.33D0  !Width of 2nd Gaussian
         Type(RecombinationData), allocatable :: Calc
-        character(:) :: filename = FILENAME_default
+        character(:), allocatable :: filename
     contains
     procedure :: ReadParams => TReadFileRec_ReadParams
     procedure :: Validate => TReadFileRec_Validate
@@ -341,7 +341,7 @@
 
     procedure(obj_function), private :: dtauda
 
-    public TReadFileRec,  CB1
+    public TReadFileRec
 
     contains
 
@@ -531,7 +531,7 @@
     ! =============================
     logical, parameter :: readFile = .true.
     character(:), allocatable :: filename
-    filename = "f3_0.9.out"
+    filename = this%filename
     ! =============================
 
     print *, "init called"
