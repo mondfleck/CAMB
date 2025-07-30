@@ -368,20 +368,16 @@ def read_ini(ini_filename, no_validate=False):
     try:
         if not no_validate:
             validate_ini_file(ini_filename)
-            print("Validation success!")
         cp = model.CAMBparams()
         read_inifile = camblib.__camb_MOD_camb_readparamfile
         read_inifile.argtypes = [POINTER(CAMBparams), ctypes.c_char_p, POINTER(ctypes.c_long)]
         read_inifile.restype = ctypes.c_bool
         s = ctypes.create_string_buffer(ini_filename.encode("latin-1"))
-        print("Everything but last one")
         if not read_inifile(cp, s, ctypes.c_long(len(ini_filename))):
             config.check_global_error("read_ini")
     finally:
-        print("Reads?")
         if data:
             os.unlink(ini_filename)
-        print("Unlinks")
     return cp
 
 
