@@ -1,4 +1,4 @@
-from ctypes import c_bool, c_double, c_int, c_char_p
+from ctypes import c_bool, c_double, c_int, c_char, POINTER
 
 from .baseconfig import F2003Class, fortran_class, optional_fortran_class
 
@@ -50,7 +50,7 @@ class ReadFileRec(RecombinationModel):
     """
 
     _fields_ = [
-        ("filename", c_char_p)
+        ("filename", POINTER(c_char))
     ]
 
     _fortran_class_module_ = "ReadFileRec"
