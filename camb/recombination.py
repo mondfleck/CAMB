@@ -1,4 +1,4 @@
-from ctypes import c_bool, c_double, c_int, c_char, POINTER
+from ctypes import c_bool, c_double, c_int, c_char, POINTER, byref, c_char_p
 
 from .baseconfig import F2003Class, fortran_class, optional_fortran_class
 
@@ -56,6 +56,13 @@ class ReadFileRec(RecombinationModel):
     _fortran_class_module_ = "ReadFileRec"
     _fortran_class_name_ = "TReadFileRec"
 
+
+# _methods_ = [
+#     ("ReadParams", [POINTER(c_double), POINTER(c_double), POINTER(c_double)], POINTER(c_double))
+# ]
+
+# # def get_filename(self):
+# #     return self.get_Rec_Filename()
 
 @optional_fortran_class
 class CosmoRec(RecombinationModel):

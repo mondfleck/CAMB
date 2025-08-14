@@ -1191,4 +1191,10 @@
         end do
     end subroutine TReadFileRec_linterp_dec
 
+    function TReadFileRec_get_Rec_Filename(this)
+    character(:), allocatable :: TReadFileRec_get_Rec_Filename
+    class(TReadFileRec) :: this
+    TReadFileRec_get_Rec_Filename = this%filename
+    end function
+
     end module ReadFileRec
