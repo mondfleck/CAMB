@@ -1,6 +1,6 @@
 from ctypes import c_bool, c_double, c_int
 
-from .baseconfig import F2003Class, fortran_class, optional_fortran_class
+from .baseconfig import F2003Class, fortran_class, optional_fortran_class, AllocatableArrayDouble
 
 
 class RecombinationModel(F2003Class):
@@ -26,6 +26,7 @@ class Recfast(RecombinationModel):
     """
 
     _fields_ = [
+        ("RECFAST_new_fudges", AllocatableArrayDouble, "RECFAST new fudge parameters"),
         ("RECFAST_fudge", c_double),
         ("RECFAST_fudge_He", c_double),
         ("RECFAST_Heswitch", c_int),

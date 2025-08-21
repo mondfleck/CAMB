@@ -211,6 +211,7 @@
     use MathUtils
     use results
     use MpiUtils, only : MpiStop
+    use iso_c_binding
     implicit none
     private
 
@@ -242,7 +243,7 @@
     end Type RecombinationData
 
     type, extends(TRecombinationModel) :: TRecfast
-        real(dl) :: RECFAST_new_fudges(7) = RECFAST_new_fudges_default
+        real(dl), pointer :: RECFAST_new_fudges(:)
         real(dl) :: RECFAST_fudge  = RECFAST_fudge_default2
         real(dl) :: RECFAST_fudge_He = RECFAST_fudge_He_default
         integer  :: RECFAST_Heswitch = RECFAST_Heswitch_default
@@ -344,6 +345,23 @@
 
     contains
 
+    ! function get_RECFAST_new_fudges_ptr(this) result(ptr) bind(C)
+        ! class(TRecfast), intent(in) :: this
+        ! type(c_ptr) :: ptr
+        ! ptr = c_loc(this%RECFAST_new_fudges)
+    ! end function get_RECFAST_new_fudges_ptr
+
+    function get_RECFAST_new_fudges_ptr(cptr) result(arr_ptr) bind(C)
+        use iso_c_binding
+        type(c_ptr), intent(in) :: cptr
+        type(c_ptr) :: arr_ptr
+        type(TRecfast), pointer :: recfast
+        ! Recover Fortran pointer from C pointer
+        call c_f_pointer(cptr, recfast)
+        ! Return C pointer to the array (must be pointer/allocatable in TRecfast)
+        arr_ptr = c_loc(recfast%RECFAST_new_fudges(1))
+    end function get_RECFAST_new_fudges_ptr
+
     subroutine TRecfast_ReadParams(this, Ini)
     use IniObjects
     class(TRecfast) :: this
@@ -362,6 +380,8 @@
     if (this%RECFAST_Hswitch) then
         this%RECFAST_fudge = this%RECFAST_fudge - (RECFAST_fudge_default - RECFAST_fudge_default2)
     end if
+    allocate(this%RECFAST_new_fudges(7))
+    this%RECFAST_new_fudges = RECFAST_new_fudges_default
     end subroutine TRecfast_ReadParams
 
     subroutine TRecfast_Validate(this, OK)
