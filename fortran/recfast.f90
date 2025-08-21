@@ -224,6 +224,7 @@
     logical, parameter  :: RECFAST_Hswitch_default = .true. !include H corrections (v1.5, 2010)
     real(dl), parameter :: RECFAST_fudge_default = 1.14_dl !1.14_dl
     real(dl), parameter :: RECFAST_fudge_default2 = 1.105d0 + 0.02d0
+    real(dl), parameter :: RECFAST_new_fudges_default(7) = (/1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl/)
 
     Type RecombinationData
         real(dl) :: Recombination_saha_z !Redshift at which saha OK
@@ -241,6 +242,7 @@
     end Type RecombinationData
 
     type, extends(TRecombinationModel) :: TRecfast
+        real(dl) :: RECFAST_new_fudges(7) = RECFAST_new_fudges_default
         real(dl) :: RECFAST_fudge  = RECFAST_fudge_default2
         real(dl) :: RECFAST_fudge_He = RECFAST_fudge_He_default
         integer  :: RECFAST_Heswitch = RECFAST_Heswitch_default
@@ -515,7 +517,8 @@
     real(dl), parameter :: tol=1.D-5                !Tolerance for R-K
     procedure(TClassDverk) :: dverk
 
-
+    write (*,*) 'Fudges: ', this%RECFAST_new_fudges
+    
     if (.not. allocated(this%Calc)) allocate(this%Calc)
     Calc => this%Calc
 
@@ -776,8 +779,10 @@
     integer Heflag
     real(dl) C10, dHdz, z_scale
     type(RecombinationData), pointer :: Recomb
+    real(dl), pointer :: new_fudges(:)
 
     Recomb => this%Calc
+    new_fudges => this%RECFAST_new_fudges
 
     !       the Pequignot, Petitjean & Boisson fitting parameters for Hydrogen
     a_PPB = 4.309d0
@@ -925,10 +930,10 @@
         !       +K*Rup*n*(1.d0-x)))
     else !use full rate for H
 
-        f(1) = ((x*x_H*n*Rdown - Rup*(1.d0-x_H)*exp(-CL/Tmat)) &
-            *(1.d0 + K*Lambda*n*(1.d0-x_H))) &
-            /(Hz*(1.d0+z)*(1.d0/Recomb%fu+K*Lambda*n*(1.d0-x_H)/Recomb%fu &
-            +K*Rup*n*(1.d0-x_H)))
+        f(1) = new_fudges(1)*((x*x_H*n*Rdown*new_fudges(2) - new_fudges(3)*Rup*(1.d0-x_H)*exp(-CL/Tmat)) &
+            *(1.d0 + new_fudges(4)*K*Lambda*n*(1.d0-x_H))) &
+            /(Hz*(1.d0+z)*(1.d0/Recomb%fu*new_fudges(5)+new_fudges(6)*K*Lambda*n*(1.d0-x_H)/Recomb%fu &
+            +new_fudges(7)*K*Rup*n*(1.d0-x_H)))
 
     end if
 
