@@ -345,23 +345,6 @@
 
     contains
 
-    ! function get_RECFAST_new_fudges_ptr(this) result(ptr) bind(C)
-        ! class(TRecfast), intent(in) :: this
-        ! type(c_ptr) :: ptr
-        ! ptr = c_loc(this%RECFAST_new_fudges)
-    ! end function get_RECFAST_new_fudges_ptr
-
-    function get_RECFAST_new_fudges_ptr(cptr) result(arr_ptr) bind(C)
-        use iso_c_binding
-        type(c_ptr), intent(in) :: cptr
-        type(c_ptr) :: arr_ptr
-        type(TRecfast), pointer :: recfast
-        ! Recover Fortran pointer from C pointer
-        call c_f_pointer(cptr, recfast)
-        ! Return C pointer to the array (must be pointer/allocatable in TRecfast)
-        arr_ptr = c_loc(recfast%RECFAST_new_fudges(1))
-    end function get_RECFAST_new_fudges_ptr
-
     subroutine TRecfast_ReadParams(this, Ini)
     use IniObjects
     class(TRecfast) :: this
