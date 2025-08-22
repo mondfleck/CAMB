@@ -243,7 +243,7 @@
     end Type RecombinationData
 
     type, extends(TRecombinationModel) :: TRecfast
-        real(dl), pointer :: RECFAST_new_fudges(:)
+        real(dl), dimension(:), allocatable :: RECFAST_new_fudges
         real(dl) :: RECFAST_fudge  = RECFAST_fudge_default2
         real(dl) :: RECFAST_fudge_He = RECFAST_fudge_He_default
         integer  :: RECFAST_Heswitch = RECFAST_Heswitch_default
@@ -519,9 +519,13 @@
     integer :: ind, nw
     real(dl), parameter :: tol=1.D-5                !Tolerance for R-K
     procedure(TClassDverk) :: dverk
-
-    write (*,*) 'Fudges: ', this%RECFAST_new_fudges
     
+    if (.not. allocated(this%RECFAST_new_fudges)) then
+        allocate (this%RECFAST_new_fudges(7))
+        this%RECFAST_new_fudges = RECFAST_new_fudges_default
+    write (*,*) 'Fudges: ', this%RECFAST_new_fudges
+    end if
+
     if (.not. allocated(this%Calc)) allocate(this%Calc)
     Calc => this%Calc
 
