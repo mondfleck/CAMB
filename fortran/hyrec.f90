@@ -19,8 +19,8 @@
 
     real(dl), parameter ::  zinitial = 8e3_dl !highest redshift
     real(dl), parameter ::  zfinal=0._dl
-    integer, parameter :: Nz=2248            !For SWIFT model of HYREC-2
-    !integer,  parameter :: Nz=105859          !For the rest of models
+    !integer(8), parameter :: Nz=2248            !For SWIFT model of HYREC-2
+    integer(8),  parameter :: Nz=105859          !For the rest of models
 
     Type RecombinationData
         real(dl), private :: xhyrec(Nz), tmhyrec(Nz)
