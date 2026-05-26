@@ -239,6 +239,7 @@
 
         !The following only used for approximations where small effect
         real(dl) :: OmegaK, OmegaT, z_eq
+        real(dl) :: N_eff
         class(CAMBdata), pointer :: State
     end Type RecombinationData
 
@@ -568,6 +569,7 @@
         Calc%mu_T = not4/(not4-(not4-1.d0)*Yp)   !Mass per atom
         Calc%fHe = Yp/(not4*(1.d0-Yp))       !n_He_tot / n_H_tot
 
+        Calc%N_eff = State%CP%N_eff()
 
         Calc%Nnow = 3._dl*bigH**2*State%CP%ombh2/(const_eightpi*G*Calc%mu_H*m_H)
 
@@ -936,7 +938,10 @@
         !       /(Hz*(1.d0+z)*(1.d0+K*Lambda*n*(1.d0-x)
         !       +K*Rup*n*(1.d0-x)))
     else !use full rate for H
-
+        
+        ! Recomb%State%CP%N_eff()
+        ! we want to fit a linear model on the parameters. basically 
+        ! new_fudges = new_fudges_0 + A * (p-p_0)
         f(1) = new_fudges(1)*((x*x_H*n*Rdown*new_fudges(2) - new_fudges(3)*Rup*(1.d0-x_H)*exp(-CL/Tmat)) &
             *(1.d0 + new_fudges(4)*K*Lambda*n*(1.d0-x_H))) &
             /(Hz*(1.d0+z)*(1.d0/Recomb%fu*new_fudges(5)+new_fudges(6)*K*Lambda*n*(1.d0-x_H)/Recomb%fu &
