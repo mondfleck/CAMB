@@ -239,7 +239,10 @@
 
         !The following only used for approximations where small effect
         real(dl) :: OmegaK, OmegaT, z_eq
-        real(dl) :: N_eff
+
+        ! The following used for fudge corrections
+        real(dl) :: N_eff, ombh2, omch2, thetastar, tau, log1010As, ns
+        
         class(CAMBdata), pointer :: State
     end Type RecombinationData
 
@@ -521,11 +524,6 @@
     real(dl), parameter :: tol=1.D-5                !Tolerance for R-K
     procedure(TClassDverk) :: dverk
     
-    if (.not. allocated(this%RECFAST_new_fudges)) then
-        allocate (this%RECFAST_new_fudges(7))
-        this%RECFAST_new_fudges = RECFAST_new_fudges_default
-    write (*,*) 'Fudges: ', this%RECFAST_new_fudges
-    end if
 
     if (.not. allocated(this%Calc)) allocate(this%Calc)
     Calc => this%Calc
@@ -569,7 +567,6 @@
         Calc%mu_T = not4/(not4-(not4-1.d0)*Yp)   !Mass per atom
         Calc%fHe = Yp/(not4*(1.d0-Yp))       !n_He_tot / n_H_tot
 
-        Calc%N_eff = State%CP%N_eff()
 
         Calc%Nnow = 3._dl*bigH**2*State%CP%ombh2/(const_eightpi*G*Calc%mu_H*m_H)
 
@@ -578,6 +575,20 @@
 
         !       Fudge factor to approximate for low z out of equilibrium effect
         Calc%fu=this%RECFAST_fudge
+
+        ! More fudge factors
+        Calc%N_eff = State%CP%N_eff()
+        Calc%ombh2 = State%CP%ombh2
+        Calc%omch2 = State%CP%omch2
+        Calc%thetastar = State%ThermoDerivedParams(derived_thetastar)
+        Calc%tau = State%GetReionizationOptDepth()
+
+        if (.not. allocated(this%RECFAST_new_fudges)) then
+            allocate (this%RECFAST_new_fudges(7))
+            this%RECFAST_new_fudges = RECFAST_new_fudges_default
+            write (*,*) 'Fudges: ', this%RECFAST_new_fudges
+        end if
+
 
         !       Set initial matter temperature
         y(3) = Calc%Tnow*(1._dl+z)            !Initial rad. & mat. temperature
