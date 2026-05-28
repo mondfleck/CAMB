@@ -242,6 +242,7 @@
 
         ! The following used for fudge corrections
         real(dl) :: N_eff, ombh2, omch2, thetastar, tau, log1010As, ns
+        ! thetastar here is actually 100*thetastar
         
         class(CAMBdata), pointer :: State
     end Type RecombinationData
