@@ -241,7 +241,7 @@
         real(dl) :: OmegaK, OmegaT, z_eq
 
         ! The following used for fudge corrections
-        real(dl) :: N_eff, ombh2, omch2, thetastar, tau, log1010As, ns
+        real(dl) :: N_eff, mnu, ombh2, omch2, thetastar, tau, log1010As, ns
         ! thetastar here is actually 100*thetastar
         
         class(CAMBdata), pointer :: State
@@ -579,10 +579,13 @@
 
         ! More fudge factors
         Calc%N_eff = State%CP%N_eff()
+        Calc%mnu = sum(State%nu_masses) ! not sure if this works TODO
         Calc%ombh2 = State%CP%ombh2
         Calc%omch2 = State%CP%omch2
         Calc%thetastar = State%ThermoDerivedParams(derived_thetastar)
         Calc%tau = State%GetReionizationOptDepth()
+        Calc%log1010As = log(1.E10_dl*State%CP%InitPower%As)
+        Calc%ns = State%CP%InitPower%Effective_ns()
 
         if (.not. allocated(this%RECFAST_new_fudges)) then
             allocate (this%RECFAST_new_fudges(7))
