@@ -248,7 +248,8 @@
     end Type RecombinationData
 
     type, extends(TRecombinationModel) :: TRecfast
-        real(dl), dimension(:), allocatable :: RECFAST_new_fudges
+        real(dl), dimension(:), allocatable :: RECFAST_new_fudges ! TODO refactor to be d=7
+        real(dl), dimension(:,:), allocatable :: RECFAST_fudge_parameters ! TODO refactor to be 7 x 8 (number of cosmo params)
         real(dl) :: RECFAST_fudge  = RECFAST_fudge_default2
         real(dl) :: RECFAST_fudge_He = RECFAST_fudge_He_default
         integer  :: RECFAST_Heswitch = RECFAST_Heswitch_default
@@ -369,7 +370,7 @@
         this%RECFAST_fudge = this%RECFAST_fudge - (RECFAST_fudge_default - RECFAST_fudge_default2)
     end if
     allocate(this%RECFAST_new_fudges(7))
-    this%RECFAST_new_fudges = RECFAST_new_fudges_default
+    this%RECFAST_new_fudges = RECFAST_new_fudges_default ! TODO fix this
     end subroutine TRecfast_ReadParams
 
     subroutine TRecfast_Validate(this, OK)
