@@ -226,6 +226,13 @@
     real(dl), parameter :: RECFAST_fudge_default = 1.14_dl !1.14_dl
     real(dl), parameter :: RECFAST_fudge_default2 = 1.105d0 + 0.02d0
     real(dl), parameter :: RECFAST_new_fudges_default(7) = (/1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl, 1.00_dl/)
+    integer, parameter :: RECFAST_omch2=1, RECFAST_ombh2=2, RECFAST_thetastar=3, RECFAST_tau=4, RECFAST_logAs = 5, &
+        RECFAST_ns=6, RECFAST_N_eff=7, RECFAST_mnu=8
+    integer, parameter :: RECFAST_p_size = 8
+    real(dl), parameter :: RECFAST_pfid(RECFAST_p_size) ! = TODO honestly not sure what the pfid is anymore
+    ! we need the centre of the distribution
+    ! TODO check difference between p0 and pfid
+    ! let's use the planck best fit for now, like is done for the bias/fisher matrices in hyrec-2
 
     Type RecombinationData
         real(dl) :: Recombination_saha_z !Redshift at which saha OK
@@ -241,7 +248,7 @@
         real(dl) :: OmegaK, OmegaT, z_eq
 
         ! The following used for fudge corrections
-        real(dl) :: N_eff, mnu, ombh2, omch2, thetastar, tau, log1010As, ns
+        real(dl) :: cosmoParams(REFCFAST_p_size)
         ! thetastar here is actually 100*thetastar
         
         class(CAMBdata), pointer :: State
@@ -579,14 +586,14 @@
         Calc%fu=this%RECFAST_fudge
 
         ! More fudge factors
-        Calc%N_eff = State%CP%N_eff()
-        Calc%mnu = sum(State%nu_masses) ! not sure if this works TODO
-        Calc%ombh2 = State%CP%ombh2
-        Calc%omch2 = State%CP%omch2
-        Calc%thetastar = State%ThermoDerivedParams(derived_thetastar)
-        Calc%tau = State%GetReionizationOptDepth()
-        Calc%log1010As = log(1.E10_dl*State%CP%InitPower%As)
-        Calc%ns = State%CP%InitPower%Effective_ns()
+        Calc%cosmoParams(RECFAST_N_eff) = State%CP%N_eff()
+        Calc%cosmoParams(RECFAST_mnu) = sum(State%nu_masses) ! not sure if this works TODO
+        Calc%cosmoParams(RECFAST_ombh2) = State%CP%ombh2
+        Calc%cosmoParams(RECFAST_omch2) = State%CP%omch2
+        Calc%cosmoParams(RECFAST_thetastar) = State%ThermoDerivedParams(derived_thetastar)
+        Calc%cosmoParams(RECFAST_tau) = State%GetReionizationOptDepth()
+        Calc%cosmoParams(RECFAST_logAs) = log(1.E10_dl*State%CP%InitPower%As)
+        Calc%cosmoParams(RECFAST_ns) = State%CP%InitPower%Effective_ns()
 
         if (.not. allocated(this%RECFAST_new_fudges)) then
             allocate (this%RECFAST_new_fudges(7))
